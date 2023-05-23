@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const dotenv=require("dotenv")
 
 dotenv.config()
@@ -83,6 +83,14 @@ const addFollower = async (connctionDetails) => {
 
 const createPost = async (postDetails) => {
     await client.db("socialMedia").collection("post").insertOne(postDetails);
+}
+
+const addReaction = async (reactionDetails) => {
+    await client.db("socialMedia").collection("reactions").insertOne(reactionDetails);
+}
+
+const addComment = async (commentDetails) => {
+    await client.db("socialMedia").collection("comment").insertOne(commentDetails);
 }
 
 authMiddleware = (request, response, next) => {
@@ -182,12 +190,18 @@ app.get('/userApi/posts', authMiddleware, async(request, response) => {
 
 app.get('/userApi/posts/feed', authMiddleware, async(request, response)=> {
     //get all latest posts
-    let followingList = await client.db("socialMedia").collection("follower").find({follower: request.username}, {$following: 1});
+    let followingList = await client.db("socialMedia").collection("follower").find({follower: request.username});
     followingList = await followingList.toArray();
+    followingList = followingList.map((document) => {
+        return document.following;
+    })
     console.log(followingList);
-    let result = await client.db("socialMedia").collection("post").find({createdBy: { $in : "zyx" }}).sort({$date : -1}).limit(10);
+    let result = await client.db("socialMedia").collection("post").find({createdBy: {$in : followingList}}).sort({date: -1}).limit(10);
     result = await result.toArray();
-    response.send(request.username);
+    response.send(result);
+    /*let result = await client.db("socialMedia").collection("post").find({createdBy: { $in : "zyx" }}).sort({$date : -1}).limit(10);
+    result = await result.toArray();
+    response.send(request.username);*/
 })
 
 app.post('/userApi/posts', authMiddleware, async(request, response) => {
@@ -203,27 +217,53 @@ app.post('/userApi/posts', authMiddleware, async(request, response) => {
 })
 
 app.get('/userApi/posts/:postId', authMiddleware, async(request, response) => {
-    response.send(request.username);
+    const {postId} = request.params;
+    console.log(postId);
+    let result = await client.db("socialMedia").collection("post").find({_id: new ObjectId(postId)});
+    result = await result.toArray();
+    response.send(result);
 })
 
 app.post('/userApi/posts/:postId/reactions', authMiddleware, async(request, response) => {
     //create a reaction to the post
-    response.send(request.username);
+    const {postId} = request.params;
+    const {reaction} = request.body;
+    const reactionDetails = {
+        reactedBy: request.username,
+        reaction: reaction,
+        postId: postId
+    }
+    await addReaction(reactionDetails);
+    response.send("reaction posted");
 })
 
 app.get('/userApi/posts/:postId/reactions', authMiddleware, async(request, response) => {
     //get all the people with their corresponding reactions for the post
-    response.send(request.username);
+    const {postId} = request.params;
+    let result = await client.db("socialMedia").collection("reactions").find({postId: postId});
+    result = await result.toArray();
+    response.send(result);
 })
 
 app.post('/userApi/posts/:postId/replies', authMiddleware, async(request, response) => {
     //create a reply to the post
-    response.send(request.username);
+    const {postId} = request.params;
+    const {comment} = request.body;
+    const commentDetails = {
+        commentedBy: request.username,
+        comment: comment,
+        postId: postId
+    }
+    await addComment(commentDetails);
+    response.send("comment has been added");
 })
 
 app.get('/userApi/posts/:postId/replies', authMiddleware, async(request, response) => {
     //get all the people with their corresponding replies for the post
-    response.send(request.username);
+    const {postId} = request.params;
+    let result = await client.db("socialMedia").collection("comment").find({postId: postId});
+    result = await result.toArray();
+    response.send(result);
 })
 
 }
