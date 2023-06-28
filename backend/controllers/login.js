@@ -19,7 +19,7 @@ module.exports = async (request, response) => {
         if(match){
             const token = jwt.sign({
                     username: username
-                }, 'secretKey', { expiresIn: '1h' });
+                }, process.env.JWT_SECRET_TOKEN, { expiresIn: '1h' });
             response.send(JSON.stringify({
                 response: "user logged in successfully",
                 token: token

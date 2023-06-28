@@ -17,15 +17,21 @@ const addComment = async (commentDetails) => {
 const create_reaction = async(request, response) => {
     //create a reaction to the post
     const {postId} = request.params;
-    const {reaction} = request.body;
     const reactionDetails = {
         _id: new mongoose.Types.ObjectId(),
         reactedBy: request.username,
-        reaction: reaction,
+        reaction: request.body.reaction,
         post_id: postId
     }
-    await addReaction(reactionDetails);
+    const result = await reaction.find({reactedBy: request.username, reaction: request.body.reaction, post_id: postId});
+    if(result.length===0){
+            await addReaction(reactionDetails);
     response.send("reaction posted");
+    }
+    else{
+        response.status(401).send("reaction already present");
+    }
+    
 };
 
 const get_reactions = async(request, response) => {

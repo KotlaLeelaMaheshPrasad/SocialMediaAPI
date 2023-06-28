@@ -13,8 +13,13 @@ const create_connection = async (request, response) => {
         follower: request.username,
         following: following
     };
+    const result = await follower.find({follower: request.username, following: following});
+    if(result.length===0){
     await addFollower(connectionDetails);
     response.send("follow-request successfull");
+    }else{
+        response.status(400).send("connection was already there");
+    }
 };
 
 const get_followers = async (request, response) => {
